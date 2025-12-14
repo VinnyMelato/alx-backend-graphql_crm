@@ -39,6 +39,34 @@ class CustomerInput(InputObjectType):
     email = graphene.String(required=True)
     phone = graphene.String()
 
+# Add this after CustomerInput and before the Mutation class
+
+class CreateCustomer(Mutation):
+    class Arguments:
+        input = CustomerInput(required=True)
+
+    customer = graphene.Field(CustomerType)
+    message = String()
+    success = Boolean()
+
+    @classmethod
+    def mutate(cls, root, info, input):
+        try:
+            # Validate email uniqueness
+            if Customer.objects.filter(email=input.email).exists():
+                raise ValidationError("Email already exists")
+
+            # Validate phone
+            if input.phone and not re.match(r'^\+?\d{10,15}$|^\d{3}-\d{3}-\d{4}$', input.phone):
+                raise ValidationError("Invalid phone format (e.g., +1234567890 or 123-456-7890)")
+
+            customer = Customer.objects.create(**input)
+            return CreateCustomer(customer=customer, message="Customer created successfully", success=True)
+        except ValidationError as e:
+            return CreateCustomer(message=str(e), success=False)
+        except Exception as e:
+            return CreateCustomer(message=f"Error: {str(e)}", success=False)
+
 class OrderInput(InputObjectType):
     customer_id = graphene.ID(required=True)
     product_ids = graphene.List(graphene.ID, required=True)
