@@ -12,7 +12,9 @@ def log_crm_heartbeat():
         if result['hello'] == 'World':
             with open('/tmp/crm_heartbeat_log.txt', 'a') as f:
                 f.write(f"{timestamp} GraphQL endpoint responsive\n")
-    except: pass
+    except Exception as e:
+        with open('/tmp/crm_heartbeat_log.txt', 'a') as f:
+            f.write(f"{timestamp} Heartbeat check error: {str(e)}\n")
 
 
 def update_low_stock():

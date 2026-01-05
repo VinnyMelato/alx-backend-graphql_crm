@@ -3,20 +3,44 @@ from datetime import datetime, timedelta
 from gql import gql, Client
 from gql.transport.requests import RequestsHTTPTransport
 
-client = Client(transport=RequestsHTTPTransport(url='http://localhost:8000/graphql'), fetch_schema_from_transport=True)
-seven_days_ago = (datetime.now() - timedelta(days=7)).isoformat()
+transport = RequestsHTTPTransport(url='http://localhost:8000/graphql')
+client = Client(transport=transport, fetch_schema_from_transport=True)
+cutoff = datetime.now() - timedelta(days=7)
 
 query = gql('''
-query RecentOrders($orderDateAfter: String!) {
-  recentOrders(orderDateAfter: $orderDateAfter) {
-    id
-    customer { email }
+query {
+  allOrders(first: 1000) {
+    edges {
+      node {
+        id
+        orderDate
+        customer { email }
+      }
+    }
   }
 }
 ''')
 
-result = client.execute(query, variable_values={'orderDateAfter': seven_days_ago})
-with open('/tmp/order_reminders_log.txt', 'a') as f:
-    for order in result['recentOrders']:
-        f.write(f"{datetime.now().isoformat()}: Order {order['id']} - Customer: {order['customer']['email']}\n")
-print("Order reminders processed!")
+try:
+    result = client.execute(query)
+    orders = []
+    for edge in result.get('allOrders', {}).get('edges', []):
+        node = edge.get('node') or {}
+        od = node.get('orderDate')
+        if not od:
+            continue
+        try:
+            od_dt = datetime.fromisoformat(od)
+        except Exception:
+            # skip unparsable dates
+            continue
+        if od_dt >= cutoff:
+            orders.append({'id': node.get('id'), 'email': node.get('customer', {}).get('email')})
+
+    with open('/tmp/order_reminders_log.txt', 'a') as f:
+        for o in orders:
+            f.write(f"{datetime.now().isoformat()}: Order {o['id']} - Customer: {o['email']}\n")
+
+    print("Order reminders processed!")
+except Exception as e:
+    print(f"Error fetching orders: {e}")
