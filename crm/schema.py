@@ -1,3 +1,4 @@
+from crm.models import Product
 import graphene
 from graphene import String, Decimal, List, Boolean, ID, Mutation, DateTime, InputObjectType
 from graphene_django import DjangoObjectType, DjangoFilterConnectionField
