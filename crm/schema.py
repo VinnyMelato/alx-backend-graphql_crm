@@ -180,11 +180,27 @@ class CreateOrder(Mutation):
         except Exception as e:
             return CreateOrder(message=f"Error: {str(e)}", success=False)
 
+class UpdateLowStockProducts(Mutation):
+    updated_products = List(ProductType)
+    message = String()
+    success = Boolean()
+
+    @classmethod
+    def mutate(cls, root, info):
+        updated = []
+        products = Product.objects.filter(stock__lt=10)
+        for p in products:
+            p.stock = p.stock + 10
+            p.save()
+            updated.append(p)
+        return UpdateLowStockProducts(updated_products=updated, message=f"Updated {len(updated)} products", success=True)
+
 class Mutation(graphene.ObjectType):
     create_customer = CreateCustomer.Field()
     bulk_create_customers = BulkCreateCustomers.Field()
     create_product = CreateProduct.Field()
     create_order = CreateOrder.Field()
+    update_low_stock_products = UpdateLowStockProducts.Field()
 
 # Step 4: Custom Resolvers for Filtering & Sorting (Task 3)
 def resolve_all_customers(root, info, **kwargs):
