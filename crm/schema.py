@@ -71,33 +71,7 @@ class OrderInput(InputObjectType):
     customer_id = graphene.ID(required=True)
     product_ids = graphene.List(graphene.ID, required=True)
     order_date = graphene.DateTime()
-
 # Step 3: Mutations (from Tasks 1 & 2)
-class CreateCustomer(Mutation):
-    class Arguments:
-        input = CustomerInput(required=True)
-
-    customer = graphene.Field(CustomerType)
-    message = String()
-    success = Boolean()
-
-    @classmethod
-    def mutate(cls, root, info, input):
-        try:
-            # Validate email uniqueness
-            if Customer.objects.filter(email=input.email).exists():
-                raise ValidationError("Email already exists")
-
-            # Validate phone
-            if input.phone and not re.match(r'^\+?\d{10,15}$$ |^\d{3}-\d{3}-\d{4} $$', input.phone):
-                raise ValidationError("Invalid phone format (e.g., +1234567890 or 123-456-7890)")
-
-            customer = Customer.objects.create(**input)
-            return CreateCustomer(customer=customer, message="Customer created successfully", success=True)
-        except ValidationError as e:
-            return CreateCustomer(message=str(e), success=False)
-        except Exception as e:
-            return CreateCustomer(message=f"Error: {str(e)}", success=False)
 
 class BulkCreateCustomers(Mutation):
     class Arguments:
@@ -117,7 +91,7 @@ class BulkCreateCustomers(Mutation):
                     if Customer.objects.filter(email=data.email).exists():
                         errors.append(f"Email {data.email} already exists")
                         continue
-                    if data.phone and not re.match(r'^\+?\d{10,15}$$ |^\d{3}-\d{3}-\d{4} $$', data.phone):
+                    if data.phone and not re.match(r'^\+?\d{10,15}$|^\d{3}-\d{3}-\d{4}$', data.phone):
                         errors.append(f"Invalid phone for {data.name}")
                         continue
                     cust = Customer.objects.create(**data)
@@ -237,7 +211,7 @@ class Query(graphene.ObjectType):
     hello = String()
 
     def resolve_hello(self, info):
-        return "Hello, GraphQL!"
+        return "World"
 
     # Filtered queries with sorting arg
     all_customers = DjangoFilterConnectionField(
